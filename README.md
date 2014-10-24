@@ -48,7 +48,7 @@ role of each parameter.
 
 Once compiled just type:
 
-> mpirun -np <number-of-processors> ./MatchMaker <param-file>
+> mpirun -np number-of-processors ./MatchMaker param-file
 
 
 ## Input and output format
