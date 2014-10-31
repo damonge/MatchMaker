@@ -199,6 +199,10 @@ GadgetHeader read_header_multiple(char *dirname,char *prefix)
 	    header.num_files,n_files);
   }
 
+  for(i=0;i<n_files;i++)
+    free(fname_array[i]);
+  free(fname_array);
+
   return header;
 }
 
@@ -259,8 +263,13 @@ static void read_snapshot(Particles *particles)
   for(i=0;i<n_files;i++) {
     int np_here;
     int j;
+    int file_index=(Param.i_node+i)%n_files;
 
-    fp=my_fopen(fname_array[i],"r");
+#ifdef _DEBUG
+    printf("%d reading %d-th file\n",Param.i_node,file_index);
+#endif //_DEBUG
+
+    fp=my_fopen(fname_array[file_index],"r");
     my_fread(&blklen1,sizeof(int),1,fp);
     if(blklen1!=sizeof(GadgetHeader)) bad_block();
     my_fread(&header,sizeof(GadgetHeader),1,fp);
@@ -271,6 +280,9 @@ static void read_snapshot(Particles *particles)
     if(np_read+np_here>np_tot) {
       fprintf(stderr,"There's something wrong with the number of particles!\n");
       exit(1);
+    }
+    else {
+      np_read+=np_here;
     }
 
     //Read positions
@@ -303,6 +315,8 @@ static void read_snapshot(Particles *particles)
     my_fread(&blklen2,sizeof(int),1,fp);
     if(blklen1!=blklen2) bad_block();
 
+    if(np_got_here==0) continue;
+
     //Read velocities
     my_fread(&blklen1,sizeof(int),1,fp);
     int np_new=0;
@@ -314,7 +328,7 @@ static void read_snapshot(Particles *particles)
 	int ax;
 	for(ax=0;ax<3;ax++)
 	  p[new_p_index].v[ax]=v[ax];
-
+	
 	np_new++;
       }
     }
@@ -322,14 +336,19 @@ static void read_snapshot(Particles *particles)
       msg_abort(1001,"Error reading file\n");
     my_fread(&blklen2,sizeof(int),1,fp);
     if(blklen1!=blklen2) bad_block();
-
+    
     //Read ids
     my_fread(&blklen1,sizeof(int),1,fp);
     np_new=0;
     for(j=0;j<np_here;j++) {
-      unsigned long long id;
       int new_p_index=np_saved-np_got_here+np_new;
+#ifdef _LONGIDS
+      unsigned long long id;
       my_fread(&id,sizeof(unsigned long long),1,fp);
+#else //_LONGIDS
+      unsigned int id;
+      my_fread(&id,sizeof(unsigned int),1,fp);
+#endif //_LONGIDS
       if(p[new_p_index].id==j) {
 	p[new_p_index].id=id;
 	np_new++;
@@ -341,7 +360,6 @@ static void read_snapshot(Particles *particles)
     if(blklen1!=blklen2) bad_block();
 
     fclose(fp);
-    np_read+=np_here;
   }
   if(np_read!=np_tot) {
     fprintf(stderr,"There's something wrong with the number of particles!\n");
@@ -350,6 +368,9 @@ static void read_snapshot(Particles *particles)
 #ifdef _DEBUG
   printf(" Node %d read %d particles\n",this_node,np_saved);
 #endif //_DEBUG
+  for(i=0;i<n_files;i++)
+    free(fname_array[i]);
+  free(fname_array);
   msg_printf(" Done reading\n");
 
   //Check total number of particles
@@ -365,7 +386,7 @@ static void read_snapshot(Particles *particles)
   msg_printf(" Sorting particles and sharing buffer with neighbor nodes\n");
   //Sort particles by x[0]
   qsort(particles->p,particles->np_indomain,sizeof(Particle),compare_parts);
-  
+
   //Find particles that will be sent to left
   int np_toleft=0;
   int found_last=0;

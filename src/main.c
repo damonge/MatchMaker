@@ -51,6 +51,7 @@ int main(int argc,char* argv[])
 
   free(particles->p);
   free(particles->p_back);
+  free(particles);
 
   MPI_Finalize();
   return 0;

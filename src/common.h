@@ -64,7 +64,11 @@ int read_parameters(char *fname);
 typedef struct {
   float x[3];
   float v[3];   // velocity
+#ifdef _LONGIDS
   unsigned long long id;
+#else //_LONGIDS
+  unsigned int id;
+#endif //_LONGIDS
   int fof_id;
   int cll_id;
 } Particle;

@@ -4,8 +4,9 @@
 
 CC      = mpicc -std=c99 
 WOPT    ?= -Wall
-CFLAGS  := -O3 $(WOPT) $(OPENMP)
-CFLAGS += #-D_DEBUG
+CFLAGS  := -O3 $(WOPT)
+#CFLAGS  := -g -O0 $(WOPT)
+CFLAGS += -D_LONGIDS -D_DEBUG
 LIBS    := -lm
 
 EXEC = MatchMaker

@@ -392,7 +392,7 @@ static FoFGroup *assign_particles_to_fof(Particles *particles,Cell *cll,int *n_f
     }
   }
   n_fof--;
-
+  
   //Free memory from cells
   for(i=0;i<Ngrid_tot;i++) {
     if(cll[i].np_in>0)
@@ -530,10 +530,12 @@ static FoFHalo *get_halos(int *n_halos_out,int n_fof,FoFGroup *fg,Particles *par
     }
     fh[i].x_avg[0]+=Param.x_offset;
 
+  }
+
+  for(i=0;i<n_fof;i++) {
     if(fg[i].np>0)
       free(fg[i].ids);
   }
-
   free(fg);
 
   *n_halos_out=n_halos;
