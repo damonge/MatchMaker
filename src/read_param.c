@@ -81,6 +81,8 @@ static int read_parameter_file(char const *fname,Parameters *param)
   if(fi==NULL)
     msg_abort(1000, "Error: couldn't open file %s\n",fname);
 
+  param->output_format=0;
+
   n_lin=linecount(fi);
   rewind(fi);
   for(ii=0;ii<n_lin;ii++) {
@@ -102,6 +104,14 @@ static int read_parameter_file(char const *fname,Parameters *param)
       sprintf(param->output_prefix,"%s",s2);
     else if(!strcmp(s1,"output_pernode="))
       param->output_pernode=atoi(s2);
+    else if(!strcmp(s1,"output_format=")) {
+      if(!strncmp(s2,"ASCII",4))
+	param->output_format=0;
+      else if(!strncmp(s2,"FITS",4))
+	param->output_format=1;
+      else
+	msg_abort(1002,"Unrecognized format %s\n",s2);
+    }
     else if(!strcmp(s1,"dx_extra="))
       param->dx_extra=atof(s2);
     else if(!strcmp(s1,"b_fof="))
@@ -120,6 +130,7 @@ static int read_parameter_file(char const *fname,Parameters *param)
   msg_printf("  init_prefix= %s\n",param->init_prefix);
   msg_printf("  output_prefix= %s\n",param->output_prefix);
   msg_printf("  output_pernode= %d\n",param->output_pernode);
+  msg_printf("  output_format= %d\n",param->output_format);
   msg_printf("  dx_extra= %.3lf\n",param->dx_extra);
   msg_printf("  b_fof= %.3lf\n",param->b_fof);
   msg_printf("  np_min= %d\n",param->np_min);
@@ -158,7 +169,7 @@ static int read_parameter_file(char const *fname,Parameters *param)
 
   //Check particle mass
   double mp_here=27.7459457*head.omega0*pow(head.boxsize,3)/param->n_part;
-  if(fabs(mp_here/param->mp-1)>=0.001)
+  if(fabs(mp_here/param->mp-1)>=0.01)
     msg_abort(1002,"Particle mass doesn't fit... %lE!=%lE\n",
 	      mp_here,param->mp);
 

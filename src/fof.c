@@ -25,6 +25,8 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_eigen.h>
 
 #include <dirent.h>
 
@@ -40,6 +42,11 @@ static float Lbox;
 static float Lbox_half;
 
 typedef struct {
+  double eval;
+  double evec[3];
+} Esys;
+
+typedef struct {
   int np_in;
   int *ids_in;
   int np_out;
@@ -50,6 +57,14 @@ typedef struct {
   int np;
   int *ids;
 } FoFGroup;
+
+static int compare_evals(const void *p1,const void *p2)
+{
+  Esys *e1=(Esys *)p1;
+  Esys *e2=(Esys *)p2;
+
+  return (e1->eval<e2->eval) - (e1->eval>e2->eval);
+}
 
 static int compare_fof(const void *p1,const void *p2)
 {
@@ -472,6 +487,11 @@ static FoFHalo *get_halos(int *n_halos_out,int n_fof,FoFGroup *fg,Particles *par
   int i,n_halos;
   Particle *p=particles->p;
   FoFHalo *fh;
+  gsl_matrix *inertia=gsl_matrix_alloc(3,3);
+  gsl_matrix *evec=gsl_matrix_alloc(3,3);
+  gsl_vector *eval=gsl_vector_alloc(3);
+  gsl_eigen_symmv_workspace *ws=gsl_eigen_symmv_alloc(3);
+  Esys leig[3];
 
   int np_current=fg[0].np;
   n_halos=0;
@@ -483,8 +503,14 @@ static FoFHalo *get_halos(int *n_halos_out,int n_fof,FoFGroup *fg,Particles *par
       n_halos++;
     np_current=np;
   }
-  if(n_halos==0)
-    msg_abort(123,"Couldn't find any halos above np_min=%d\n",Param.np_min);
+  if(n_halos==0) {
+#ifdef _DEBUG
+    printf("Node %d couldn't find any halos above np_min=%d\n",Param.i_node,Param.np_min);
+#endif //_DEBUG  
+    *n_halos_out=0;
+    return NULL;
+  }
+
 #ifdef _DEBUG
   printf("In node %d there were initially %d FoF groups "
 	 "but only %d of them have >%d particles\n",
@@ -497,36 +523,142 @@ static FoFHalo *get_halos(int *n_halos_out,int n_fof,FoFGroup *fg,Particles *par
 
   for(i=0;i<n_halos;i++) {
     int j;
+    double inertia_here[9];
     int np=fg[i].np;
+
+    if(np<2)
+      printf("WTF\n");
 
     fh[i].np=np;
     fh[i].m_halo=np*Param.mp;
     for(j=0;j<3;j++) {
+      int k;
       fh[i].x_avg[j]=0;
       fh[i].x_rms[j]=0;
       fh[i].v_avg[j]=0;
       fh[i].v_rms[j]=0;
+      fh[i].lam[j]=0;
+      for(k=0;k<3;k++)
+	inertia_here[k+3*j]=0.;
     }
-    
+
+    //Compute center of mass position and velocity
     for(j=0;j<np;j++) {
       int ax;
       int ip=fg[i].ids[j];
       for(ax=0;ax<3;ax++) {
-	float x=p[ip].x[ax];
-	float v=p[ip].v[ax];
+	double x=p[ip].x[ax];
+	double v=p[ip].v[ax];
 
+	if(j>0) {
+	  //If the distance to the current center of mass is larger
+	  //than L/2, wrap around
+	  double cm_here=fh[i].x_avg[ax]/j;
+	  if(2*fabs(x-cm_here)>Param.boxsize) {
+	    if(2*x>Param.boxsize)
+	      x-=Param.boxsize;
+	    else 
+	      x+=Param.boxsize;
+	  }
+	}
 	fh[i].x_avg[ax]+=x;
-	fh[i].x_rms[ax]+=x*x;
 	fh[i].v_avg[ax]+=v;
-	fh[i].v_rms[ax]+=v*v;
+      }
+    }
+    for(j=0;j<3;j++) {
+      fh[i].x_avg[j]/=np;
+      fh[i].v_avg[j]/=np;
+    }
+
+    //Compute relative quantities
+    for(j=0;j<np;j++) {
+      int ax;
+      double dx[3];
+      double dv[3];
+      int ip=fg[i].ids[j];
+      
+      for(ax=0;ax<3;ax++) {
+	double x=p[ip].x[ax];
+	double v=p[ip].v[ax];
+	
+	if(2*fabs(x-fh[i].x_avg[ax])>Param.boxsize) {
+	  //Wrap around if the distance to CM is larger than L/2
+	  if(2*x>Param.boxsize)
+	    x-=Param.boxsize;
+	  else
+	    x+=Param.boxsize;
+	}
+	dx[ax]=x-fh[i].x_avg[ax];
+	dv[ax]=v-fh[i].v_avg[ax];
+      }
+      
+      //RMS
+      for(ax=0;ax<3;ax++) {
+	fh[i].x_rms[ax]+=dx[ax]*dx[ax];
+	fh[i].v_rms[ax]+=dv[ax]*dv[ax];
+      }
+      
+      //Inertia tensor;
+      for(ax=0;ax<3;ax++) {
+	int ax2;
+	for(ax2=0;ax2<3;ax2++)
+	  inertia_here[ax2+3*ax]+=dx[ax]*dx[ax2];
+      }
+
+      //Angular momentum
+      fh[i].lam[0]+=dx[1]*dv[2]-dx[2]*dv[1];
+      fh[i].lam[1]+=dx[2]*dv[0]-dx[0]*dv[2];
+      fh[i].lam[2]+=dx[0]*dv[1]-dx[1]*dv[0];
+    }
+
+    //Diagonalize inertia tensor
+    for(j=0;j<3;j++) {
+      int k;
+      for(k=0;k<3;k++)
+	gsl_matrix_set(inertia,j,k,inertia_here[k+3*j]);
+    }
+    gsl_eigen_symmv(inertia,eval,evec,ws);
+    for(j=0;j<3;j++) {
+      leig[j].eval=gsl_vector_get(eval,j);
+      leig[j].evec[0]=gsl_matrix_get(evec,0,j);
+      leig[j].evec[1]=gsl_matrix_get(evec,1,j);
+      leig[j].evec[2]=gsl_matrix_get(evec,2,j);
+    }
+    qsort(leig,3,sizeof(Esys),compare_evals);
+
+    //Add evals and evecs
+    for(j=0;j<3;j++) {
+      int k;
+      if(leig[0].eval<=0) {
+	fh[i].b=0;
+	fh[i].c=0;
+	for(k=0;k<3;k++) {
+	  fh[i].ea[k]=0;
+	  fh[i].eb[k]=0;
+	  fh[i].ec[k]=0;
+	}
+      }
+      else {
+	fh[i].b=leig[1].eval/leig[0].eval;
+	fh[i].c=leig[2].eval/leig[0].eval;
+	for(k=0;k<3;k++) {
+	  fh[i].ea[k]=leig[0].evec[k];
+	  fh[i].eb[k]=leig[1].evec[k];
+	  fh[i].ec[k]=leig[2].evec[k];
+	}
       }
     }
 
     for(j=0;j<3;j++) {
-      fh[i].x_avg[j]/=np;
-      fh[i].x_rms[j]=sqrt(fh[i].x_rms[j]/np-fh[i].x_avg[j]*fh[i].x_avg[j]);
-      fh[i].v_avg[j]/=np;
-      fh[i].v_rms[j]=sqrt(fh[i].v_rms[j]/np-fh[i].v_avg[j]*fh[i].v_avg[j]);
+      //Normalize
+      fh[i].x_rms[j]=sqrt(fh[i].x_rms[j]/np);
+      fh[i].v_rms[j]=sqrt(fh[i].v_rms[j]/np);
+
+      //Wrap CM
+      if(fh[i].x_avg[j]<0) //Wrap CM
+	fh[i].x_avg[j]+=Param.boxsize;
+      else if(fh[i].x_avg[j]>=Param.boxsize)
+	fh[i].x_avg[j]-=Param.boxsize;
     }
     fh[i].x_avg[0]+=Param.x_offset;
 
@@ -537,6 +669,11 @@ static FoFHalo *get_halos(int *n_halos_out,int n_fof,FoFGroup *fg,Particles *par
       free(fg[i].ids);
   }
   free(fg);
+
+  gsl_matrix_free(inertia);
+  gsl_matrix_free(evec);
+  gsl_vector_free(eval);
+  gsl_eigen_symmv_free(ws);
 
   *n_halos_out=n_halos;
   return fh;

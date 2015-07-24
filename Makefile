@@ -2,12 +2,18 @@
 # MatchMaker
 #   
 
+INC_FITS=-I/home/dmonge/include
+LIB_FITS=-L/home/dmonge/lib
+INC_GSL=
+LIB_GSL=
+
 CC      = mpicc -std=c99 
 WOPT    ?= -Wall
 CFLAGS  := -O3 $(WOPT)
 #CFLAGS  := -g -O0 $(WOPT)
 CFLAGS += -D_LONGIDS -D_DEBUG
-LIBS    := -lm
+CFLAGS += -I./ $(INC_FITS) $(INC_GSL)
+LIBS    := $(LIB_FITS) $(LIB_GSL) -lcfitsio -lgsl -lgslcblas -lm
 
 EXEC = MatchMaker
 all: $(EXEC)

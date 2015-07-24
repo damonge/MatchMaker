@@ -83,28 +83,46 @@ int mpi_init(int* p_argc,char*** p_argv)
   MPI_Type_struct(5,p_bc,p_off,p_ot,&ParticleMPI);
   MPI_Type_commit(&ParticleMPI);
 
-  MPI_Aint h_off[6];
-  MPI_Datatype h_ot[6];
-  int h_bc[6];
+  MPI_Aint h_off[12];
+  MPI_Datatype h_ot[12];
+  int h_bc[12];
   h_bc[0]=1; // np
   h_bc[1]=1; // m
   h_bc[2]=3; // 3*x_avg
   h_bc[3]=3; // 3*x_rms
   h_bc[4]=3; // 3*v_avg
   h_bc[5]=3; // 3*v_rms
+  h_bc[6]=3; // 3*lam
+  h_bc[7]=1; // b
+  h_bc[8]=1; // c
+  h_bc[9]=3; // 3*ea
+  h_bc[10]=3; // 3*ea
+  h_bc[11]=3; // 3*ea
   h_off[0]=offsetof(FoFHalo,np);
   h_off[1]=offsetof(FoFHalo,m_halo);
   h_off[2]=offsetof(FoFHalo,x_avg);
   h_off[3]=offsetof(FoFHalo,x_rms);
   h_off[4]=offsetof(FoFHalo,v_avg);
   h_off[5]=offsetof(FoFHalo,v_rms);
+  h_off[6]=offsetof(FoFHalo,lam);
+  h_off[7]=offsetof(FoFHalo,b);
+  h_off[8]=offsetof(FoFHalo,c);
+  h_off[9]=offsetof(FoFHalo,ea);
+  h_off[10]=offsetof(FoFHalo,eb);
+  h_off[11]=offsetof(FoFHalo,ec);
   h_ot[0]=MPI_INT;
   h_ot[1]=MPI_DOUBLE;
   h_ot[2]=MPI_DOUBLE;
   h_ot[3]=MPI_DOUBLE;
   h_ot[4]=MPI_DOUBLE;
   h_ot[5]=MPI_DOUBLE;
-  MPI_Type_struct(6,h_bc,h_off,h_ot,&HaloMPI);
+  h_ot[6]=MPI_DOUBLE;
+  h_ot[7]=MPI_DOUBLE;
+  h_ot[8]=MPI_DOUBLE;
+  h_ot[9]=MPI_DOUBLE;
+  h_ot[10]=MPI_DOUBLE;
+  h_ot[11]=MPI_DOUBLE;
+  MPI_Type_struct(12,h_bc,h_off,h_ot,&HaloMPI);
   MPI_Type_commit(&HaloMPI);
 
   /*

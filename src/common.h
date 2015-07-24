@@ -37,6 +37,7 @@ typedef struct {
   double dx_extra;         //Buffer for parallelization (in Mpc/h)
   double b_fof;            //Percolation fraction
   int np_min;              //Minimum number of particles
+  int output_format;       //Output format
 
   //Read from IC
   unsigned long long n_part; //Total number of particles
@@ -99,6 +100,12 @@ typedef struct {
   double x_rms[3];
   double v_avg[3];
   double v_rms[3];
+  double lam[3];
+  double b;
+  double c;
+  double ea[3];
+  double eb[3];
+  double ec[3];
 } FoFHalo;
 
 FoFHalo *fof_get_halos(int *n_halos_out,Particles *particles);
