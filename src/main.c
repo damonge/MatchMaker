@@ -43,7 +43,7 @@ int main(int argc,char* argv[])
   Particles* particles=read_input_snapshot();
 
   msg_printf("Getting halos\n");
-  int n_halos;
+  lint n_halos;
   FoFHalo *fh=fof_get_halos(&n_halos,particles);
 
   msg_printf("Writing output\n");
@@ -78,8 +78,13 @@ int mpi_init(int* p_argc,char*** p_argv)
   p_ot[0]=MPI_FLOAT;
   p_ot[1]=MPI_FLOAT;
   p_ot[2]=MPI_UNSIGNED_LONG_LONG;
+#ifdef _LONGIDS
+  p_ot[3]=MPI_LONG;
+  p_ot[4]=MPI_LONG;
+#else //_LONGIDS
   p_ot[3]=MPI_INT;
   p_ot[4]=MPI_INT;
+#endif //_LONGIDS
   MPI_Type_struct(5,p_bc,p_off,p_ot,&ParticleMPI);
   MPI_Type_commit(&ParticleMPI);
 
@@ -111,17 +116,17 @@ int mpi_init(int* p_argc,char*** p_argv)
   h_off[10]=offsetof(FoFHalo,eb);
   h_off[11]=offsetof(FoFHalo,ec);
   h_ot[0]=MPI_INT;
-  h_ot[1]=MPI_DOUBLE;
-  h_ot[2]=MPI_DOUBLE;
-  h_ot[3]=MPI_DOUBLE;
-  h_ot[4]=MPI_DOUBLE;
-  h_ot[5]=MPI_DOUBLE;
-  h_ot[6]=MPI_DOUBLE;
-  h_ot[7]=MPI_DOUBLE;
-  h_ot[8]=MPI_DOUBLE;
-  h_ot[9]=MPI_DOUBLE;
-  h_ot[10]=MPI_DOUBLE;
-  h_ot[11]=MPI_DOUBLE;
+  h_ot[1]=MPI_FLOAT;
+  h_ot[2]=MPI_FLOAT;
+  h_ot[3]=MPI_FLOAT;
+  h_ot[4]=MPI_FLOAT;
+  h_ot[5]=MPI_FLOAT;
+  h_ot[6]=MPI_FLOAT;
+  h_ot[7]=MPI_FLOAT;
+  h_ot[8]=MPI_FLOAT;
+  h_ot[9]=MPI_FLOAT;
+  h_ot[10]=MPI_FLOAT;
+  h_ot[11]=MPI_FLOAT;
   MPI_Type_struct(12,h_bc,h_off,h_ot,&HaloMPI);
   MPI_Type_commit(&HaloMPI);
 

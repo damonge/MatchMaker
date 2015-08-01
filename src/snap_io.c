@@ -76,7 +76,7 @@ static int compare_parts(const void *e1,const void *e2)
 {
   const Particle *p1=e1;
   const Particle *p2=e2;
-
+  
   if(p1->x[0]<p2->x[0])
     return -1;
   else if(p1->x[0]>p2->x[0])
@@ -94,14 +94,14 @@ static Particles *allocate_particles(void)
   double alloc_factor_buffer=(1+nnode*Param.dx_extra/Param.boxsize);
   double alloc_factor_true=Param.np_alloc_factor*alloc_factor_buffer;
 
-  const int np_alloc=(int)((double)(alloc_factor_true*Param.n_part)/nnode);
+  const lint np_alloc=(lint)((double)(alloc_factor_true*Param.n_part)/nnode);
   particles->p=malloc(sizeof(Particle)*np_alloc);
   if(particles->p==0)
     msg_abort(0010,"Error: Failed to allocate memory for particles\n");
 #ifdef _DEBUG
-  printf("Node %d: %d Mbytes allocated for %d particles (alloc_factor= %.2lf)\n",
+  printf("Node %d: %d Mbytes allocated for %ld particles (alloc_factor= %.2lf)\n",
 	 Param.i_node,(int)(sizeof(Particle)*np_alloc/(1024*1024.)),
-	 np_alloc,Param.np_alloc_factor);
+	 (long)np_alloc,Param.np_alloc_factor);
 #endif //_DEBUG  
 
   particles->np_allocated=np_alloc;
@@ -147,7 +147,7 @@ void print_header(GadgetHeader header)
 
 GadgetHeader read_header_multiple(char *dirname,char *prefix)
 {
-  int i;
+  lint i;
   struct dirent *ent;
   DIR *dir;
   char **fname_array;
@@ -209,13 +209,14 @@ GadgetHeader read_header_multiple(char *dirname,char *prefix)
 
 static void read_snapshot(Particles *particles)
 {
-  int i;
+  lint i;
   struct dirent *ent;
   DIR *dir;
   char **fname_array;
   int n_files=Param.n_files;
   int prefix_len=strlen(Param.init_prefix);
   int this_node=Param.i_node;
+  float norm_vel;
 
   //Collect filenames
   fname_array=(char **)malloc(n_files*sizeof(char *));
@@ -246,6 +247,7 @@ static void read_snapshot(Particles *particles)
     msg_abort(123,"Wrong number of files! %d != %d\n",
 	      header.num_files,n_files);
   }
+  norm_vel=1./sqrt(header.time);
   
   //Compute total number of particles
   unsigned long long np_tot=(unsigned long long)(header.np_total[1])+
@@ -254,7 +256,7 @@ static void read_snapshot(Particles *particles)
   
   //Iterate through files
   //Read all particles within domain
-  int np_saved=0;
+  lint np_saved=0;
   long long np_read=0;
   float lbox_f=(float)(Param.boxsize);
   float dx_domain=lbox_f/Param.n_nodes;
@@ -262,8 +264,8 @@ static void read_snapshot(Particles *particles)
   float idx_domain=1./dx_domain;
 
   for(i=0;i<n_files;i++) {
-    int np_here;
-    int j;
+    lint np_here;
+    lint j;
     int file_index=(Param.i_node+i)%n_files;
 
 #ifdef _DEBUG
@@ -288,7 +290,7 @@ static void read_snapshot(Particles *particles)
 
     //Read positions
     my_fread(&blklen1,sizeof(int),1,fp);
-    int np_got_here=0;
+    lint np_got_here=0;
     for(j=0;j<np_here;j++) {
       int ax,isector;
       float x[3];
@@ -325,15 +327,15 @@ static void read_snapshot(Particles *particles)
 
     //Read velocities
     my_fread(&blklen1,sizeof(int),1,fp);
-    int np_new=0;
+    lint np_new=0;
     for(j=0;j<np_here;j++) {
       float v[3];
-      int new_p_index=np_saved-np_got_here+np_new;
+      lint new_p_index=np_saved-np_got_here+np_new;
       my_fread(v,sizeof(float),3,fp);
       if(p[new_p_index].id==j) {
 	int ax;
 	for(ax=0;ax<3;ax++)
-	  p[new_p_index].v[ax]=v[ax];
+	  p[new_p_index].v[ax]=norm_vel*v[ax];
 	
 	np_new++;
       }
@@ -348,13 +350,8 @@ static void read_snapshot(Particles *particles)
     np_new=0;
     for(j=0;j<np_here;j++) {
       int new_p_index=np_saved-np_got_here+np_new;
-#ifdef _LONGIDS
-      unsigned long long id;
-      my_fread(&id,sizeof(unsigned long long),1,fp);
-#else //_LONGIDS
-      unsigned int id;
-      my_fread(&id,sizeof(unsigned int),1,fp);
-#endif //_LONGIDS
+      ulint id;
+      my_fread(&id,sizeof(ulint),1,fp);
       if(p[new_p_index].id==j) {
 	p[new_p_index].id=id;
 	np_new++;
@@ -372,7 +369,7 @@ static void read_snapshot(Particles *particles)
     exit(1);
   }
 #ifdef _DEBUG
-  printf(" Node %d read %d particles\n",this_node,np_saved);
+  printf(" Node %d read %ld particles\n",this_node,(long)np_saved);
 #endif //_DEBUG
   for(i=0;i<n_files;i++)
     free(fname_array[i]);
@@ -394,7 +391,7 @@ static void read_snapshot(Particles *particles)
   qsort(particles->p,particles->np_indomain,sizeof(Particle),compare_parts);
 
   //Find particles that will be sent to left
-  int np_toleft=0;
+  lint np_toleft=0;
   int found_last=0;
   float np_toleft_expected=particles->np_indomain*(Param.dx_extra/dx_domain);
   while(found_last==0) {
@@ -422,14 +419,21 @@ static void read_snapshot(Particles *particles)
 
   //Send particles to left and receive from right
   int tag=100;
-  int np_fromright;
+  lint np_fromright;
   MPI_Status stat;
+#ifdef _LONGIDS
+  MPI_Sendrecv(&np_toleft,   1,MPI_LONG,Param.i_node_left ,tag,
+	       &np_fromright,1,MPI_LONG,Param.i_node_right,tag,
+	       MPI_COMM_WORLD,&stat);
+#else //_LONGIDS
   MPI_Sendrecv(&np_toleft,   1,MPI_INT,Param.i_node_left ,tag,
 	       &np_fromright,1,MPI_INT,Param.i_node_right,tag,
 	       MPI_COMM_WORLD,&stat);
+#endif //_LONGIDS
 #ifdef _DEBUG
-  printf(" Node %d will send %d particles to node %d and will receive %d from node %d\n",
-	 Param.i_node,np_toleft,Param.i_node_left,np_fromright,Param.i_node_right);
+  printf(" Node %d will send %ld particles to node %d and will receive %ld from node %d\n",
+	 Param.i_node,(long)np_toleft,Param.i_node_left,
+	 (long)np_fromright,Param.i_node_right);
 #endif //_DEBUG
 
   if(particles->np_indomain+np_fromright>particles->np_allocated)
@@ -444,7 +448,7 @@ static void read_snapshot(Particles *particles)
 	       MPI_COMM_WORLD,&stat);
 
   //Add offset to received particles
-  int i_off=particles->np_indomain;
+  lint i_off=particles->np_indomain;
   for(i=0;i<particles->np_fromright;i++)
     particles->p[i_off+i].x[0]+=dx_domain;
   msg_printf(" Done\n\n");
@@ -458,33 +462,67 @@ Particles *read_input_snapshot(void)
   return particles;
 }
 
-static void write_halos_ascii(char *fname,int n_halos,FoFHalo *fhal)
+static void write_halos_binary(char *fname,lint n_halos,long n_halos_total,FoFHalo *fhal)
 {
-  int ii;
+  int bsize;
+  FoFHeader head;
+  GadgetHeader h;
+  FILE *fo=my_fopen(fname,"wb");
+
+  h=read_header_multiple(Param.init_dir,Param.init_prefix);
+
+  head.n_halos_total=(long)n_halos_total;
+  head.n_halos_here=(long)n_halos;
+  if(Param.output_pernode==1)
+    head.n_files=Param.n_nodes;
+  else
+    head.n_files=1;
+  head.boxsize=(float)(h.boxsize);
+  head.redshift=(float)(h.redshift);
+  head.omega_m=(float)(h.omega0);
+  head.omega_l=(float)(h.omega_lambda);
+  head.hubble=(float)(h.hubble_param);
+
+  bsize=sizeof(FoFHeader);
+  fwrite(&bsize,sizeof(int),1,fo);
+  fwrite(&head,sizeof(FoFHeader),1,fo);
+  fwrite(&bsize,sizeof(int),1,fo);
+
+  bsize=n_halos*sizeof(FoFHalo);
+  fwrite(&bsize,sizeof(int),1,fo);
+  fwrite(fhal,sizeof(FoFHalo),n_halos,fo);
+  fwrite(&bsize,sizeof(int),1,fo);
+  fclose(fo);
+}
+
+static void write_halos_ascii(char *fname,lint n_halos,FoFHalo *fhal)
+{
+  lint ii;
   FILE *fo;
 
   fo=my_fopen(fname,"w");
   if(Param.i_node==0)
     fprintf(fo,"#ID NP Mass x_avg[3] x_rms[3] v_avg[3] v_rms[3]\n");
   for(ii=0;ii<n_halos;ii++) {
-    fprintf(fo,"%d %d %lE ",ii,fhal[ii].np,fhal[ii].m_halo);
-    fprintf(fo,"%lE %lE %lE ",
+    fprintf(fo,"%ld %d %E ",(long)ii,fhal[ii].np,fhal[ii].m_halo);
+    fprintf(fo,"%E %E %E ",
 	    fhal[ii].x_avg[0],fhal[ii].x_avg[1],fhal[ii].x_avg[2]);
-    fprintf(fo,"%lE %lE %lE ",
+    fprintf(fo,"%E %E %E ",
 	    fhal[ii].x_rms[0],fhal[ii].x_rms[1],fhal[ii].x_rms[2]);
-    fprintf(fo,"%lE %lE %lE ",
+    fprintf(fo,"%E %E %E ",
 	    fhal[ii].v_avg[0],fhal[ii].v_avg[1],fhal[ii].v_avg[2]);
-    fprintf(fo,"%lE %lE %lE ",
+    fprintf(fo,"%E %E %E ",
 	    fhal[ii].v_rms[0],fhal[ii].v_rms[1],fhal[ii].v_rms[2]);
     fprintf(fo,"\n");
   }
   fclose(fo);
 }
 
-static void write_halos_fits(char *fname,int n_halos,FoFHalo *fhal)
+static void write_halos_fits(char *fname,lint n_halos,FoFHalo *fhal)
 {
-  int ii;
+  lint ii;
   fitsfile *fptr;
+  lint *lic_write;
   int *ic_write;
   float *fc_write;
   int status=0;
@@ -493,11 +531,19 @@ static void write_halos_fits(char *fname,int n_halos,FoFHalo *fhal)
 		 "VX_CM","VY_CM","VZ_CM","VX_RMS","VY_RMS","VZ_RMS",
                  "LX","LY","LZ","B","C",
 		 "EAX","EAY","EAZ","EBX","EBY","EBZ","ECX","ECY","ECZ"};
+#ifdef _LONGIDS
+  char *tform[]={"1J","1K","1E",
+		 "1E","1E","1E","1E","1E","1E",
+		 "1E","1E","1E","1E","1E","1E",
+		 "1E","1E","1E","1E","1E",
+		 "1E","1E","1E","1E","1E","1E","1E","1E","1E"};
+#else //_LONGIDS
   char *tform[]={"1J","1J","1E",
 		 "1E","1E","1E","1E","1E","1E",
 		 "1E","1E","1E","1E","1E","1E",
 		 "1E","1E","1E","1E","1E",
 		 "1E","1E","1E","1E","1E","1E","1E","1E","1E"};
+#endif //_LONGIDS
   char *tunit[]={"NA","NA","M_SUN_H",
                  "MPC_H","MPC_H","MPC_H","MPC_H","MPC_H","MPC_H",
                  "KM_S","KM_S","KM_S","KM_S","KM_S","KM_S",
@@ -509,12 +555,21 @@ static void write_halos_fits(char *fname,int n_halos,FoFHalo *fhal)
   fits_create_file(&fptr,fname,&status);
   fits_create_tbl(fptr,BINARY_TBL,0,29,ttype,tform,tunit,NULL,&status);
 
+  lic_write=(lint *)malloc(n_halos*sizeof(lint));
+  if(lic_write==NULL)
+    msg_abort(123,"Out of memory\n");
+  for(ii=0;ii<n_halos;ii++)  //IDs
+    lic_write[ii]=(lint)ii;
+#ifdef _LONGIDS
+  fits_write_col(fptr,TLONG,1 ,1,1,n_halosl,lic_write,&status);
+#else //_LONGIDS
+  fits_write_col(fptr,TINT,1 ,1,1,n_halosl,lic_write,&status);
+#endif //_LONGIDS
+  free(lic_write);
+
   ic_write=(int *)malloc(n_halos*sizeof(int));
   if(ic_write==NULL)
     msg_abort(123,"Out of memory\n");
-  for(ii=0;ii<n_halos;ii++)  //IDs
-    ic_write[ii]=(int)ii;
-  fits_write_col(fptr,TINT,1 ,1,1,n_halosl,ic_write,&status);
   for(ii=0;ii<n_halos;ii++)  {//NP {
     ic_write[ii]=(int)(fhal[ii].np);
     if(fhal[ii].np==0)
@@ -522,11 +577,12 @@ static void write_halos_fits(char *fname,int n_halos,FoFHalo *fhal)
   }
   fits_write_col(fptr,TINT,2 ,1,1,n_halosl,ic_write,&status);
   free(ic_write);
+
   fc_write=(float *)malloc(n_halos*sizeof(float));
   if(fc_write==NULL)
     msg_abort(123,"Out of memory\n");
   for(ii=0;ii<n_halos;ii++) //Mass
-    fc_write[ii]=(float)(1.0E10*fhal[ii].m_halo);
+    fc_write[ii]=(float)(fhal[ii].m_halo);
   fits_write_col(fptr,TFLOAT,3 ,1,1,n_halosl,fc_write,&status);
   for(ii=0;ii<n_halos;ii++) //x_CM
     fc_write[ii]=(float)(fhal[ii].x_avg[0]);
@@ -609,8 +665,8 @@ static void write_halos_fits(char *fname,int n_halos,FoFHalo *fhal)
   free(fc_write);
   fits_close_file(fptr,&status);
 }
-
-static void write_halos_multi(char *prefix,int n_halos,FoFHalo *fhal)
+ 
+static void write_halos_multi(char *prefix,lint n_halos,FoFHalo *fhal,long n_halos_total)
 {
   char fname[256];
 
@@ -624,27 +680,37 @@ static void write_halos_multi(char *prefix,int n_halos,FoFHalo *fhal)
     msg_printf(" Writing to file %s\n",fname);
     write_halos_fits(fname,n_halos,fhal);
   }
+  else if(Param.output_format==2) {
+    sprintf(fname,"%s.dat",prefix);
+    msg_printf(" Writing to file %s\n",fname);
+    write_halos_binary(fname,n_halos,n_halos_total,fhal);
+  }
 }
 
-static void write_halos_pernode(int n_halos,FoFHalo *fhal)
+static void write_halos_pernode(lint n_halos,FoFHalo *fhal)
 {
   char prefix[256];
+  long n_halos_total;
+  long n_halos_here=n_halos;
   
+  MPI_Allreduce(&n_halos_here,&n_halos_total,1,MPI_LONG,MPI_SUM,MPI_COMM_WORLD);
+  msg_printf("%ld halos found in total\n",n_halos_total);
+
   //Sort by mass
   qsort(fhal,n_halos,sizeof(FoFHalo),compare_halo);
 
   sprintf(prefix,"%s.%d",Param.output_prefix,Param.i_node);
-  write_halos_multi(prefix,n_halos,fhal);
+  write_halos_multi(prefix,n_halos,fhal,n_halos_total);
 
   free(fhal);
 }
 
-static void write_halos_root(int n_halos,FoFHalo *fhal)
+static void write_halos_root(lint n_halos,FoFHalo *fhal)
 {
   //Gather halos
   int ii;
   int n_halos_total=0;
-  int n_halos_here=n_halos;
+  int n_halos_here=(int)n_halos;
   int *n_halos_array=NULL;
   int *n_disp_array=NULL;
   FoFHalo *fh_tot=NULL;
@@ -667,8 +733,8 @@ static void write_halos_root(int n_halos,FoFHalo *fhal)
       n_halos_total+=n_halos_array[ii];
     if(n_halos_total<=0)
       msg_abort(123,"No haloes found\n");
-    msg_printf(" %d halos found in total with %d particles of more\n",
-	       n_halos_total,Param.np_min);
+    msg_printf(" %ld halos found in total with %d particles of more\n",
+	       (long)n_halos_total,Param.np_min);
 
     //Calculate array of displacements
     n_disp_array[0]=0;
@@ -694,7 +760,7 @@ static void write_halos_root(int n_halos,FoFHalo *fhal)
     qsort(fh_tot,n_halos_total,sizeof(FoFHalo),compare_halo);
 
     sprintf(prefix,"%s",Param.output_prefix);
-    write_halos_multi(prefix,n_halos_total,fh_tot);
+    write_halos_multi(prefix,n_halos_total,fh_tot,(long)n_halos_total);
 
     free(fh_tot);
   }
@@ -702,7 +768,7 @@ static void write_halos_root(int n_halos,FoFHalo *fhal)
   msg_printf(" Done\n\n");
 }
 
-void write_halos(int n_halos,FoFHalo *fhal)
+void write_halos(lint n_halos,FoFHalo *fhal)
 {
   if(Param.output_pernode)
     write_halos_pernode(n_halos,fhal);

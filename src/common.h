@@ -25,6 +25,14 @@
 
 #include <mpi.h>
 
+#ifdef _LONGIDS
+typedef long lint;
+typedef unsigned long long ulint;
+#else //_LONGIDS
+typedef int lint;
+typedef unsigned int lint;
+#endif //_LONGIDS
+
 //////
 // Defined in parameters.h
 typedef struct {
@@ -65,25 +73,21 @@ int read_parameters(char *fname);
 typedef struct {
   float x[3];
   float v[3];   // velocity
-#ifdef _LONGIDS
-  unsigned long long id;
-#else //_LONGIDS
-  unsigned int id;
-#endif //_LONGIDS
-  int fof_id;
-  int cll_id;
+  ulint id;
+  lint fof_id;
+  lint cll_id;
 } Particle;
 
 typedef struct {
   Particle* p;
   Particle* p_back;
 
-  int np_allocated; //Total number of particles allocated
-  int np_local; //Total number of particles saved
-  int np_indomain; //Total number of particles found in domain
-  int np_toleft; //Number of particles that will be passed on to the node on the left
-  int np_centre; //Number of particles that won't be passed to nor from any other node
-  int np_fromright; //Number of particles passed from the right node
+  lint np_allocated; //Total number of particles allocated
+  lint np_local; //Total number of particles saved
+  lint np_indomain; //Total number of particles found in domain
+  lint np_toleft; //Number of particles that will be passed on to the node on the left
+  lint np_centre; //Number of particles that won't be passed to nor from any other node
+  lint np_fromright; //Number of particles passed from the right node
   unsigned long long np_total;
   float np_average;
 } Particles;
@@ -95,24 +99,36 @@ MPI_Datatype HaloMPI;
 // Defined in fof.c
 typedef struct {
   int np;
-  double m_halo;
-  double x_avg[3];
-  double x_rms[3];
-  double v_avg[3];
-  double v_rms[3];
-  double lam[3];
-  double b;
-  double c;
-  double ea[3];
-  double eb[3];
-  double ec[3];
+  float m_halo;
+  float x_avg[3];
+  float x_rms[3];
+  float v_avg[3];
+  float v_rms[3];
+  float lam[3];
+  float b;
+  float c;
+  float ea[3];
+  float eb[3];
+  float ec[3];
 } FoFHalo;
 
-FoFHalo *fof_get_halos(int *n_halos_out,Particles *particles);
+FoFHalo *fof_get_halos(lint *n_halos_out,Particles *particles);
 
 
 //////
 // Defined in snap_io.c
+typedef struct {
+  long n_halos_total;
+  long n_halos_here;
+  int n_files;
+  float boxsize;
+  float redshift;
+  float omega_m;
+  float omega_l;
+  float hubble;
+  char fill[256-40];
+} FoFHeader;
+
 typedef struct {
   int    np[6];
   double mass[6];
@@ -137,7 +153,7 @@ typedef struct {
 void print_header(GadgetHeader header);
 GadgetHeader read_header_multiple(char *dirname,char *prefix);
 Particles *read_input_snapshot();
-void write_halos(int n_fof,FoFHalo *fof);
+void write_halos(lint n_fof,FoFHalo *fof);
 
 
 //////

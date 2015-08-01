@@ -109,6 +109,8 @@ static int read_parameter_file(char const *fname,Parameters *param)
 	param->output_format=0;
       else if(!strncmp(s2,"FITS",4))
 	param->output_format=1;
+      else if(!strncmp(s2,"BINARY",4))
+	param->output_format=2;
       else
 	msg_abort(1002,"Unrecognized format %s\n",s2);
     }
