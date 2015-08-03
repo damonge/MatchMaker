@@ -69,6 +69,7 @@ Three output formats are provided, given by the parameter
 
 ASCII and FITS will contain a 29 columns, corresponding to the
 quantities:
+
 1.  "ID"     - Unique Halo ID
 2.  "NP"     - Number of particles
 3.  "MASS"   - Mass (in units of M_sun/h)
