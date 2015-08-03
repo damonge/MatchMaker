@@ -1,4 +1,4 @@
-# MatchMaker
+# MatchMaker - Friends-of-Friends halo finder.
 
 MatchMaker is a simple MPI-parallel FoF halo finder.
 
@@ -61,9 +61,50 @@ Furthermore, the code currently assumes that all positions
 are given in units of Mpc/h, velocities in km/s and masses in
 10^10 M_sun/h. The results are also provided in these units.
 
-The only supported output format is ASCII files with a number
-of columns for different halo properties. The first line in
-the output file explains the contents of each column.
+Three output formats are provided, given by the parameter
+"output_format" in the parameter file. These are :
+ - ASCII : normal text file (ASCII).
+ - FITS : FITS binary table.
+ - BINARY : MatchMaker's own binary format.
+ASCII and FITS will contain a 29 columns, corresponding to the
+quantities:
+1-  "ID"     - Unique Halo ID
+2-  "NP"     - Number of particles
+3-  "MASS"   - Mass (in units of M_sun/h)
+4-  "PX_CM"  - Center of mass position (in units of Mpc/h)
+5-  "PY_CM"
+6-  "PZ_CM"
+7-  "PX_RMS" - Standard deviation of the particle positions
+8-  "PY_RMS"   (in units of Mpc/h)
+9-  "PZ_RMS"
+10- "VX_CM"  - Center-of-mass velocity (in km/s)
+11- "VY_CM"
+12- "VZ_CM"
+13- "VX_RMS" - Velocity dispersion (in km/s)
+14- "VY_RMS"
+15- "VZ_RMS"
+16- "LX"     - Angular momentum (in units of Mpc/h * km/s)
+17- "LY"
+18- "LZ"
+19- "B"      - Ratio between the second and first (largest)
+               eigenvalues of the inertia tensor
+20- "C"      - Ratio between the third (smallest) and first
+               (largest) eigenvalues of the inertia tensor
+21- "EAX"    - Eigenvector for the first (largest)
+22- "EAY"      eigenvalue of the inertia tensor
+23- "EAZ"
+24- "EBX"    - Eigenvector for the second eigenvalue of the
+25- "EBY"      inertia tensor
+26- "EBZ"
+27- "ECX"    - Eigenvector for the third (smallest) eigenvalue
+28- "ECY"      of the inertia tensor
+29- "ECZ"
+
+The halos are ordered by mass (largest to smallest). An example
+showing how to interpret the MatchMaker binary format is given
+in sample/test_read_binary.c. The directory "sample" also
+contains a sample MatchMaker output file for each of the three
+output formats (.txt -> ASCII, .dat -> BINARY, .fits -> FITS).
 
 
 ## License
