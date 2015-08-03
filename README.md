@@ -66,6 +66,7 @@ Three output formats are provided, given by the parameter
  - ASCII : normal text file (ASCII).
  - FITS : FITS binary table.
  - BINARY : MatchMaker's own binary format.
+
 ASCII and FITS will contain a 29 columns, corresponding to the
 quantities:
 
