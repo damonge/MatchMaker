@@ -24,8 +24,7 @@ interval). For this algorithm to succeed the size
 of the buffer has to be larger than the size of the
 largest halo in the simulation. For normal runs
 a buffer of 5-10 Mpc/h should therefore be safe.
-5. Compute halo properties: mass, center of mass,
-size, velocity, rms velocity.
+5. Compute halo properties (see below).
 
 
 ## Compiling
