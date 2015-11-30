@@ -28,36 +28,7 @@
 
 #include "common.h"
 
-int mpi_init(int* p_argc,char ***p_argv);
-
-int main(int argc,char* argv[])
-{
-  mpi_init(&argc,&argv);
-  msg_init();
-
-  if(argc<2)
-    msg_abort(1,"Error: Parameter file not specified. cola_halo param.init\n");
-  read_parameters(argv[1]);
-
-  msg_printf("Reading particles\n");
-  Particles* particles=read_input_snapshot();
-
-  msg_printf("Getting halos\n");
-  lint n_halos;
-  FoFHalo *fh=fof_get_halos(&n_halos,particles);
-
-  msg_printf("Writing output\n");
-  write_halos(n_halos,fh);
-
-  free(particles->p);
-  free(particles->p_back);
-  free(particles);
-
-  MPI_Finalize();
-  return 0;
-}
-
-int mpi_init(int* p_argc,char*** p_argv)
+static int mpi_init(int* p_argc,char*** p_argv)
 {
   MPI_Init(p_argc,p_argv);
 
@@ -148,5 +119,32 @@ int mpi_init(int* p_argc,char*** p_argv)
   printf("%d %d\n",h_off[4],ext_int+7*ext_d);
   printf("%d %d\n",h_off[5],ext_int+10*ext_d);
   */
+  return 0;
+}
+
+int main(int argc,char* argv[])
+{
+  mpi_init(&argc,&argv);
+  msg_init();
+
+  if(argc<2)
+    msg_abort(1,"Error: Parameter file not specified. cola_halo param.init\n");
+  read_parameters(argv[1]);
+
+  msg_printf("Reading particles\n");
+  Particles* particles=read_input_snapshot();
+
+  msg_printf("Getting halos\n");
+  lint n_halos;
+  FoFHalo *fh=fof_get_halos(&n_halos,particles);
+
+  msg_printf("Writing output\n");
+  write_halos(n_halos,fh);
+
+  free(particles->p);
+  free(particles->p_back);
+  free(particles);
+
+  MPI_Finalize();
   return 0;
 }

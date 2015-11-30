@@ -175,21 +175,13 @@ static int get_neighbors(lint ip0,Cell *cll,Particle *p,lint fof_id)
 	  if(dz>Lbox_half) dz=Lbox-dz;
 	  d2=dx*dx+dy*dy+dz*dz;
 	  if(d2<=D2fof) {
-	    float dy,dz,d2;
-	    dy=fabs(x0[1]-x1[1]);
-	    dz=fabs(x0[2]-x1[2]);
-	    if(dy>Lbox_half) dy=Lbox-dy;
-	    if(dz>Lbox_half) dz=Lbox-dz;
-	    d2=dx*dx+dy*dy+dz*dz;
-	    if(d2<=D2fof) {
-	      if(p0->fof_id==0) //New halo!
-		p0->fof_id=fof_id;
-	      p[id].fof_id=fof_id;
-	      ids_single[n_new_neighbors]=id;
-	      n_new_neighbors++;
-	      if(n_new_neighbors>=N_IDS_NEW_MAX)
-		msg_abort(123,"Enlarge N_IDS_NEW_MAX\n");
-	    }
+	    if(p0->fof_id==0) //New halo!
+	      p0->fof_id=fof_id;
+	    p[id].fof_id=fof_id;
+	    ids_single[n_new_neighbors]=id;
+	    n_new_neighbors++;
+	    if(n_new_neighbors>=N_IDS_NEW_MAX)
+	      msg_abort(123,"Enlarge N_IDS_NEW_MAX\n");
 	  }
 	}
       }
