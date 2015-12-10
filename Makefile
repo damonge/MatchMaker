@@ -11,7 +11,12 @@ CC      = mpicc -std=c99
 WOPT    ?= -Wall
 CFLAGS  := -O3 $(WOPT)
 #CFLAGS  := -g -O0 $(WOPT)
-CFLAGS += -D_LONGIDS -D_DEBUG
+#Add this if you're using long (64bit) ids
+CFLAGS += -D_LONGIDS
+#Add this if your positions are in kpc/h and not Mpc/h
+CFLAGS += -D_L_KPC
+#Add this if you want extra output
+CFLAGS += -D_DEBUG
 CFLAGS += -I./ $(INC_FITS) $(INC_GSL)
 LIBS    := $(LIB_FITS) $(LIB_GSL) -lcfitsio -lgsl -lgslcblas -lm
 

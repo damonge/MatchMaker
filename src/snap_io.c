@@ -204,6 +204,9 @@ GadgetHeader read_header_multiple(char *dirname,char *prefix)
     free(fname_array[i]);
   free(fname_array);
 
+#ifdef _L_KPC
+  header.boxsize*=0.001;
+#endif //_L_KPC
   return header;
 }
 
@@ -247,6 +250,9 @@ static void read_snapshot(Particles *particles)
     msg_abort(123,"Wrong number of files! %d != %d\n",
 	      header.num_files,n_files);
   }
+#ifdef _L_KPC
+  header.boxsize*=0.001;
+#endif //_L_KPC
   norm_vel=1./sqrt(header.time);
   
   //Compute total number of particles
@@ -278,7 +284,9 @@ static void read_snapshot(Particles *particles)
     my_fread(&header,sizeof(GadgetHeader),1,fp);
     my_fread(&blklen1,sizeof(int),1,fp);
     if(blklen1!=sizeof(GadgetHeader)) bad_block();
-    
+#ifdef _L_KPC
+  header.boxsize*=0.001;
+#endif //_L_KPC
     np_here=header.np[1];
     if(np_read+np_here>np_tot) {
       fprintf(stderr,"There's something wrong with the number of particles!\n");
@@ -296,9 +304,12 @@ static void read_snapshot(Particles *particles)
       float x[3];
 
       my_fread(x,sizeof(float),3,fp);
-      for(ax=0;ax<3;ax++)
+      for(ax=0;ax<3;ax++) {
+#ifdef _L_KPC
+	x[ax]*=0.001;
+#endif //_L_KPC
       	x[ax]=wrap_float(x[ax],lbox_f);
-
+      }
       isector=(int)(x[0]*idx_domain);
       if(isector<0)
 	isector+=Param.n_nodes;
