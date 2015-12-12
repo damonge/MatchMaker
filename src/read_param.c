@@ -172,8 +172,8 @@ static int read_parameter_file(char const *fname,Parameters *param)
   //Check particle mass
   double mp_here=27.7459457*head.omega0*pow(head.boxsize,3)/param->n_part;
   if(fabs(mp_here/param->mp-1)>=0.01)
-    msg_abort(1002,"Particle mass doesn't fit... %lE!=%lE\n",
-	      mp_here,param->mp);
+    msg_printf("WARNING: Particle mass doesn't match... %lE!=%lE\n",
+	       mp_here,param->mp);
 
   msg_printf("\n");
 

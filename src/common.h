@@ -25,13 +25,13 @@
 
 #include <mpi.h>
 
-#ifdef _LONGIDS
+#ifdef _LONG_INT
 typedef long lint;
 typedef unsigned long long ulint;
-#else //_LONGIDS
+#else //_LONG_INT
 typedef int lint;
-typedef unsigned int lint;
-#endif //_LONGIDS
+typedef unsigned int ulint;
+#endif //_LONG_INT
 
 //////
 // Defined in parameters.h
@@ -73,7 +73,11 @@ int read_parameters(char *fname);
 typedef struct {
   float x[3];
   float v[3];   // velocity
-  ulint id;
+#ifdef _LONGIDS
+  unsigned long long id;
+#else //_LONGIDS
+  unsigned int id;
+#endif //_LONGIDS
   lint fof_id;
   lint cll_id;
 } Particle;

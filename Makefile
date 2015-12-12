@@ -11,10 +11,10 @@ CC      = mpicc -std=c99
 WOPT    ?= -Wall
 CFLAGS  := -O3 $(WOPT)
 #CFLAGS  := -g -O0 $(WOPT)
+#Add this if you have a lot of particles (>=1024^3), although it's always recommended
+CFLAGS += -D_LONG_INT
 #Add this if you're using long (64bit) ids
 CFLAGS += -D_LONGIDS
-#Add this if your positions are in kpc/h and not Mpc/h
-CFLAGS += -D_L_KPC
 #Add this if you want extra output
 CFLAGS += -D_DEBUG
 CFLAGS += -I./ $(INC_FITS) $(INC_GSL)

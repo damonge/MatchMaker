@@ -204,9 +204,6 @@ GadgetHeader read_header_multiple(char *dirname,char *prefix)
     free(fname_array[i]);
   free(fname_array);
 
-#ifdef _L_KPC
-  header.boxsize*=0.001;
-#endif //_L_KPC
   return header;
 }
 
@@ -250,9 +247,6 @@ static void read_snapshot(Particles *particles)
     msg_abort(123,"Wrong number of files! %d != %d\n",
 	      header.num_files,n_files);
   }
-#ifdef _L_KPC
-  header.boxsize*=0.001;
-#endif //_L_KPC
   norm_vel=1./sqrt(header.time);
   
   //Compute total number of particles
@@ -284,9 +278,6 @@ static void read_snapshot(Particles *particles)
     my_fread(&header,sizeof(GadgetHeader),1,fp);
     my_fread(&blklen1,sizeof(int),1,fp);
     if(blklen1!=sizeof(GadgetHeader)) bad_block();
-#ifdef _L_KPC
-  header.boxsize*=0.001;
-#endif //_L_KPC
     np_here=header.np[1];
     if(np_read+np_here>np_tot) {
       fprintf(stderr,"There's something wrong with the number of particles!\n");
@@ -305,9 +296,6 @@ static void read_snapshot(Particles *particles)
 
       my_fread(x,sizeof(float),3,fp);
       for(ax=0;ax<3;ax++) {
-#ifdef _L_KPC
-	x[ax]*=0.001;
-#endif //_L_KPC
       	x[ax]=wrap_float(x[ax],lbox_f);
       }
       isector=(int)(x[0]*idx_domain);
@@ -432,15 +420,15 @@ static void read_snapshot(Particles *particles)
   int tag=100;
   lint np_fromright;
   MPI_Status stat;
-#ifdef _LONGIDS
+#ifdef _LONG_INT
   MPI_Sendrecv(&np_toleft,   1,MPI_LONG,Param.i_node_left ,tag,
 	       &np_fromright,1,MPI_LONG,Param.i_node_right,tag,
 	       MPI_COMM_WORLD,&stat);
-#else //_LONGIDS
+#else //_LONG_INT
   MPI_Sendrecv(&np_toleft,   1,MPI_INT,Param.i_node_left ,tag,
 	       &np_fromright,1,MPI_INT,Param.i_node_right,tag,
 	       MPI_COMM_WORLD,&stat);
-#endif //_LONGIDS
+#endif //_LONG_INT
 #ifdef _DEBUG
   printf(" Node %d will send %ld particles to node %d and will receive %ld from node %d\n",
 	 Param.i_node,(long)np_toleft,Param.i_node_left,
@@ -542,19 +530,19 @@ static void write_halos_fits(char *fname,lint n_halos,FoFHalo *fhal)
 		 "VX_CM","VY_CM","VZ_CM","VX_RMS","VY_RMS","VZ_RMS",
                  "LX","LY","LZ","B","C",
 		 "EAX","EAY","EAZ","EBX","EBY","EBZ","ECX","ECY","ECZ"};
-#ifdef _LONGIDS
+#ifdef _LONG_INT
   char *tform[]={"1J","1K","1E",
 		 "1E","1E","1E","1E","1E","1E",
 		 "1E","1E","1E","1E","1E","1E",
 		 "1E","1E","1E","1E","1E",
 		 "1E","1E","1E","1E","1E","1E","1E","1E","1E"};
-#else //_LONGIDS
+#else //_LONG_INT
   char *tform[]={"1J","1J","1E",
 		 "1E","1E","1E","1E","1E","1E",
 		 "1E","1E","1E","1E","1E","1E",
 		 "1E","1E","1E","1E","1E",
 		 "1E","1E","1E","1E","1E","1E","1E","1E","1E"};
-#endif //_LONGIDS
+#endif //_LONG_INT
   char *tunit[]={"NA","NA","M_SUN_H",
                  "MPC_H","MPC_H","MPC_H","MPC_H","MPC_H","MPC_H",
                  "KM_S","KM_S","KM_S","KM_S","KM_S","KM_S",
@@ -571,11 +559,11 @@ static void write_halos_fits(char *fname,lint n_halos,FoFHalo *fhal)
     msg_abort(123,"Out of memory\n");
   for(ii=0;ii<n_halos;ii++)  //IDs
     lic_write[ii]=(lint)ii;
-#ifdef _LONGIDS
+#ifdef _LONG_INT
   fits_write_col(fptr,TLONG,1 ,1,1,n_halosl,lic_write,&status);
-#else //_LONGIDS
+#else //_LONG_INT
   fits_write_col(fptr,TINT,1 ,1,1,n_halosl,lic_write,&status);
-#endif //_LONGIDS
+#endif //_LONG_INT
   free(lic_write);
 
   ic_write=(int *)malloc(n_halos*sizeof(int));

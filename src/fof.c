@@ -42,12 +42,8 @@ static float Lbox;
 static float Lbox_half;
 
 #define MASS_FACTOR 1.0E10
-
-#ifdef _LONGIDS
 #define N_IDS_NEW_MAX 1000000
-#else //_LONGIDS
-#define N_IDS_NEW_MAX 100000
-#endif //_LONGIDS
+
 static lint *ids_new,*ids_old,*ids_single;
 
 typedef struct {

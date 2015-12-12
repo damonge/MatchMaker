@@ -48,14 +48,18 @@ static int mpi_init(int* p_argc,char*** p_argv)
   p_off[4]=offsetof(Particle,cll_id);
   p_ot[0]=MPI_FLOAT;
   p_ot[1]=MPI_FLOAT;
-  p_ot[2]=MPI_UNSIGNED_LONG_LONG;
 #ifdef _LONGIDS
+  p_ot[2]=MPI_UNSIGNED_LONG_LONG;
+#else //_LONGIDS
+  p_ot[2]=MPI_UNSIGNED;
+#endif //_LONGIDS
+#ifdef _LONG_INT
   p_ot[3]=MPI_LONG;
   p_ot[4]=MPI_LONG;
-#else //_LONGIDS
+#else //_LONG_INT
   p_ot[3]=MPI_INT;
   p_ot[4]=MPI_INT;
-#endif //_LONGIDS
+#endif //_LONG_INT
   MPI_Type_struct(5,p_bc,p_off,p_ot,&ParticleMPI);
   MPI_Type_commit(&ParticleMPI);
 
@@ -101,24 +105,6 @@ static int mpi_init(int* p_argc,char*** p_argv)
   MPI_Type_struct(12,h_bc,h_off,h_ot,&HaloMPI);
   MPI_Type_commit(&HaloMPI);
 
-  /*
-  MPI_Aint ext_f,ext_llu,ext_int,ext_d;
-  MPI_Type_extent(MPI_FLOAT,&ext_f);
-  MPI_Type_extent(MPI_DOUBLE,&ext_d);
-  MPI_Type_extent(MPI_INT,&ext_int);
-  MPI_Type_extent(MPI_UNSIGNED_LONG_LONG,&ext_llu);
-  printf("%d %d\n",p_off[0],0);
-  printf("%d %d\n",p_off[1],3*ext_f);
-  printf("%d %d\n",p_off[2],6*ext_f);
-  printf("%d %d\n",p_off[3],6*ext_f+ext_llu);
-  printf("%d %d\n",p_off[4],6*ext_f+ext_llu+ext_int);
-  printf("%d %d\n",h_off[0],0);
-  printf("%d %d\n",h_off[1],ext_int);
-  printf("%d %d\n",h_off[2],ext_int+ext_d);
-  printf("%d %d\n",h_off[3],ext_int+4*ext_d);
-  printf("%d %d\n",h_off[4],ext_int+7*ext_d);
-  printf("%d %d\n",h_off[5],ext_int+10*ext_d);
-  */
   return 0;
 }
 
