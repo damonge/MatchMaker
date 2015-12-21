@@ -350,7 +350,11 @@ static void read_snapshot(Particles *particles)
     for(j=0;j<np_here;j++) {
       int new_p_index=np_saved-np_got_here+np_new;
       ulint id;
-      my_fread(&id,sizeof(ulint),1,fp);
+#ifdef _LONGIDS
+      my_fread(&id,sizeof(unsigned long long),1,fp);
+#else //_LONGIDS
+      my_fread(&id,sizeof(unsigned int),1,fp);
+#endif //_LONGIDS
       if(p[new_p_index].id==j) {
 	p[new_p_index].id=id;
 	np_new++;
