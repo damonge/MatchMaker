@@ -2,8 +2,8 @@
 # MatchMaker
 #   
 
-INC_FITS=-I/home/damonge/include
-LIB_FITS=-L/home/damonge/lib
+INC_FITS=-I/users/damonge/include
+LIB_FITS=-L/users/damonge/lib
 INC_GSL=
 LIB_GSL=
 

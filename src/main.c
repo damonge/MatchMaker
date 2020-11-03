@@ -60,7 +60,7 @@ static int mpi_init(int* p_argc,char*** p_argv)
   p_ot[3]=MPI_INT;
   p_ot[4]=MPI_INT;
 #endif //_LONG_INT
-  MPI_Type_struct(5,p_bc,p_off,p_ot,&ParticleMPI);
+  MPI_Type_create_struct(5,p_bc,p_off,p_ot,&ParticleMPI);
   MPI_Type_commit(&ParticleMPI);
 
   MPI_Aint h_off[12];
@@ -102,7 +102,7 @@ static int mpi_init(int* p_argc,char*** p_argv)
   h_ot[9]=MPI_FLOAT;
   h_ot[10]=MPI_FLOAT;
   h_ot[11]=MPI_FLOAT;
-  MPI_Type_struct(12,h_bc,h_off,h_ot,&HaloMPI);
+  MPI_Type_create_struct(12,h_bc,h_off,h_ot,&HaloMPI);
   MPI_Type_commit(&HaloMPI);
 
   return 0;

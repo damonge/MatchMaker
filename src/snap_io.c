@@ -692,7 +692,7 @@ static void write_halos_multi(char *prefix,lint n_halos,FoFHalo *fhal,long n_hal
 
 static void write_halos_pernode(lint n_halos,FoFHalo *fhal)
 {
-  char prefix[256];
+  char prefix[512];
   long n_halos_total;
   long n_halos_here=n_halos;
   
